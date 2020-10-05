@@ -160,18 +160,26 @@ CORE_EXCLUDE = [
 ]
 
 
+all_filenames = []
 def generate_filenames(dirs, exclude=[]):
     for dir in dirs:
         for path in Path().rglob(ORIGINAL_GRAPHICS_PATH + dir + "/**/*.png"):
             if should_exclude(path, exclude):
                 continue
+
+            all_filenames.append(path)
+
             yield path
 
 
 def should_exclude(path, exclude):
+    if path.name.endswith('-mask.png'):
+        return True
+
     for exclude_path_part in exclude:
         if exclude_path_part in path.name:
             return True
+
     return False
 
 
@@ -235,8 +243,22 @@ def render_image(args):
     img_converted.save(replace)
 
 
+def modfile(path, new_location=False):
+    path = str(path)
+
+    assert path.startswith('originals/')
+    _, modname, modpath = path.split('/', 2)
+
+    if new_location:
+        modpath = 'data/%s/%s' % (modname, modpath)
+        modname = 'factorio-noir'
+
+    return '__%s__/%s' % (modname, modpath)
+
+
 def main():
-    # shutil.rmtree("graphics", ignore_errors=True)
+    shutil.rmtree("data", ignore_errors=True)
+
     processor = MultiProcessor(render_image)
 
     for filename in list(generate_filenames(CORE, CORE_EXCLUDE)):
@@ -281,6 +303,12 @@ def main():
         processor.submit_task((filename, 0.7, 0.2))
 
     processor.join()
+
+    with open('file_map.lua', 'w') as f:
+        f.write('return {\n')
+        for filename in all_filenames:
+            f.write('    ["%s"] = "%s",\n' % (modfile(filename), modfile(filename, True)))
+        f.write('}\n')
 
 
 if __name__ == "__main__":

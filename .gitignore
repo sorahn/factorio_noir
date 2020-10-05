@@ -1,4 +1,5 @@
 originals
 .DS_Store
 data
+file_map.lua
 *.zip
